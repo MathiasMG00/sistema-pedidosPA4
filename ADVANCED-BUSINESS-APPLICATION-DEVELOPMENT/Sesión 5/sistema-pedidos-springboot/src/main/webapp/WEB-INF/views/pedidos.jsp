@@ -165,6 +165,9 @@
                 </tbody>
             </table>
         </div>
+
+        <c:url var="supervisionUrl" value="/supervision/pedidos" />
+        <a href="${supervisionUrl}" class="boton-link boton-link-primario">Supervisión de pedidos </a>
     </section>
 </div>
 </body>
