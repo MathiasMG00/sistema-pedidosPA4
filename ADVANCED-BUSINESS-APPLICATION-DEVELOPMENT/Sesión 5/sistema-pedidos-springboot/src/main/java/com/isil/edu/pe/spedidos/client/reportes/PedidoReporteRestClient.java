@@ -1,8 +1,11 @@
 package com.isil.edu.pe.spedidos.client.reportes;
 
 import com.isil.edu.pe.spedidos.client.reportes.dto.PedidoReporteResponse;
+import com.isil.edu.pe.spedidos.client.reportes.dto.PedidoRevisionResponse;
 import com.isil.edu.pe.spedidos.client.reportes.dto.ProductoVendidoResponse;
 import com.isil.edu.pe.spedidos.client.reportes.dto.ResumenPedidosResponse;
+import com.isil.edu.pe.spedidos.client.reportes.dto.ResumenRevisionResponse;
+
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 @Component
@@ -53,7 +57,8 @@ public class PedidoReporteRestClient implements PedidoReporteClient {
           .uri(baseUrl + "?cliente={cliente}", cliente.trim())
           .accept(MediaType.APPLICATION_JSON)
           .retrieve()
-          .body(new ParameterizedTypeReference<List<PedidoReporteResponse>>() { });
+          .body(new ParameterizedTypeReference<List<PedidoReporteResponse>>() {
+          });
       return response == null ? List.of() : response;
     } catch (RestClientResponseException | ResourceAccessException e) {
       throw noDisponible(e);
@@ -67,7 +72,8 @@ public class PedidoReporteRestClient implements PedidoReporteClient {
           .uri(baseUrl + "/estadisticas/productos")
           .accept(MediaType.APPLICATION_JSON)
           .retrieve()
-          .body(new ParameterizedTypeReference<List<ProductoVendidoResponse>>() { });
+          .body(new ParameterizedTypeReference<List<ProductoVendidoResponse>>() {
+          });
       return response == null ? List.of() : response;
     } catch (RestClientResponseException | ResourceAccessException e) {
       throw noDisponible(e);
@@ -77,5 +83,49 @@ public class PedidoReporteRestClient implements PedidoReporteClient {
   private PedidoReporteNoDisponibleException noDisponible(Exception e) {
     return new PedidoReporteNoDisponibleException(
         "pedidos-reportes-service no está disponible. Verifique que se ejecute en el puerto 8083.", e);
+  }
+
+  @Override
+  public List<PedidoRevisionResponse> listarRevisiones(String estado) {
+    try {
+      List<PedidoRevisionResponse> respuesta = restClient.get()
+          .uri(baseUrl + "/revisiones?estado={estado}", estado)
+          .accept(MediaType.APPLICATION_JSON)
+          .retrieve()
+          .body(
+              new ParameterizedTypeReference<List<PedidoRevisionResponse>>() {
+              });
+
+      if (respuesta == null) {
+        throw new PedidoReporteNoDisponibleException(
+            "El servicio de reportes devolvió una respuesta vacía.",
+            null);
+      }
+
+      return respuesta;
+    } catch (RestClientException e) {
+      throw noDisponible(e);
+    }
+  }
+
+  @Override
+  public ResumenRevisionResponse obtenerResumenRevisiones() {
+    try {
+      ResumenRevisionResponse respuesta = restClient.get()
+          .uri(baseUrl + "/estadisticas/revisiones")
+          .accept(MediaType.APPLICATION_JSON)
+          .retrieve()
+          .body(ResumenRevisionResponse.class);
+
+      if (respuesta == null) {
+        throw new PedidoReporteNoDisponibleException(
+            "El servicio de reportes devolvió una respuesta vacía.",
+            null);
+      }
+
+      return respuesta;
+    } catch (RestClientException e) {
+      throw noDisponible(e);
+    }
   }
 }
