@@ -41,6 +41,9 @@ public class Pedido {
   @Column(nullable = false)
   private LocalDateTime fecha;
 
+  @Column(nullable = false)
+  private boolean revisado = false;
+
   public Pedido() {
   }
 
@@ -130,4 +133,13 @@ public class Pedido {
   public void setFecha(LocalDateTime fecha) {
     this.fecha = fecha;
   }
+
+  public boolean isRevisado() {
+    return revisado;
+  }
+
+  public void setRevisado(boolean revisado) {
+    this.revisado = revisado;
+  }
+  
 }
