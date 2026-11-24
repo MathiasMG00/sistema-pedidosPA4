@@ -1,12 +1,18 @@
 package com.isil.edu.pe.spedidos.controller;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+
+import java.math.BigDecimal;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,16 +20,25 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+
+import com.isil.edu.pe.spedidos.client.reportes.PedidoReporteClient;
+import com.isil.edu.pe.spedidos.client.reportes.dto.ResumenRevisionResponse;
+
+
 
 @SpringBootTest
 @ActiveProfiles("test")
 class PedidoSecurityIntegrationTest {
 
   private MockMvc mockMvc;
+
+  @MockitoBean
+  private PedidoReporteClient reporteClient;
 
   @Autowired
   private WebApplicationContext context;
@@ -72,14 +87,30 @@ class PedidoSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("Return order summary JSON when CONSULTA role accesses protected API")
-  void returnOrderSummaryJsonWhenConsultaRoleAccessesProtectedApi() throws Exception {
-    // Arrange / Act
-    ResultActions response = mockMvc.perform(get("/api/v1/orders/resumen")
-        .with(user("consulta").roles("CONSULTA")));
-    // Assert
-    response.andExpect(status().isOk())
-        .andExpect(jsonPath("$.totalPedidos").isNumber())
-        .andExpect(jsonPath("$.totalUnidades").isNumber());
-  }
+@DisplayName("Permitir supervisión al usuario con rol CONSULTA")
+void permitirSupervisionParaRolConsulta() throws Exception {
+    // Arrange
+    var resumen = new ResumenRevisionResponse(
+        0L,
+        0L,
+        0L,
+        BigDecimal.ZERO
+    );
+
+    when(reporteClient.listarRevisiones("PENDIENTE"))
+        .thenReturn(List.of());
+
+    when(reporteClient.obtenerResumenRevisiones())
+        .thenReturn(resumen);
+
+    // Act y Assert
+    mockMvc.perform(get("/supervision/pedidos")
+            .with(user("consulta").roles("CONSULTA")))
+        .andExpect(status().isOk())
+        .andExpect(view().name("supervision-pedidos"))
+        .andExpect(model().attribute("resumen", resumen));
+
+    verify(reporteClient).listarRevisiones("PENDIENTE");
+    verify(reporteClient).obtenerResumenRevisiones();
+}
 }
