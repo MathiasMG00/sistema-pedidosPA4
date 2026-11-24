@@ -1,0 +1,63 @@
+@startuml
+skinparam componentStyle rectangle
+top to bottom direction
+
+actor "Usuario\nNavegador" as usuario
+
+component "Spring Security\nRoles y CSRF" as security
+component "DispatcherServlet" as dispatcher
+component "PedidoSupervisionController\nSpring MVC :8081" as controller
+component "supervision-pedidos.jsp" as jsp
+
+rectangle "Transacción local MySQL\n@Transactional" {
+    component "PedidoRevisionService\nPedidoRevisionServiceImpl" as revision
+
+    component "PedidoRevisionJdbcRepository\nSpring JDBC" as escritura
+
+    revision --> escritura : revisarPedido()
+}
+
+database "MySQL\nPedidos y revisiones" as db
+
+component "PedidoReporteClient\nPedidoReporteRestClient" as cliente
+
+rectangle "pedidos-reportes-service :8083" {
+    component "RevisionReporteController\nREST" as api
+    component "RevisionReporteService\nRevisionReporteServiceImpl" as reportes
+    component "RevisionReporteJdbcRepository\nSpring JDBC" as lectura
+
+    api --> reportes : Consultar revisiones y resumen
+    reportes --> lectura : Consultar datos
+}
+
+usuario --> security : GET / POST
+security --> dispatcher
+dispatcher --> controller
+
+controller --> revision : POST revisar
+escritura --> db : UPDATE pedido\nINSERT pedido_revision
+
+controller --> cliente : GET supervisión
+cliente --> api : HTTP + JSON
+lectura --> db : SELECT parametrizado
+
+controller --> jsp : Model
+jsp --> usuario : HTML
+
+component "Registro de pedidos\nFlujo existente :8081" as registro
+component "inventario-service :8082\nDependencia externa" as inventario
+
+usuario --> registro : Registrar pedido
+registro --> inventario : HTTP + JSON\nConsultar productos y reservar stock
+
+note bottom of escritura
+  UPDATE e INSERT se confirman juntos.
+  Si falla el INSERT, se revierte el UPDATE.
+end note
+
+note bottom of cliente
+  La consulta HTTP queda fuera
+  de la transacción de revisión.
+end note
+
+@enduml
